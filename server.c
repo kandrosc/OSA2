@@ -14,7 +14,7 @@ int main(int argc, char const *argv[]) {
 	int opt = 1;
 	int addrlen = sizeof(address);
 	char buffer[BUFFER_SIZE] = {0};
-	char *hello = "Hello from server";
+	char *hello = "Hello from server, this is greeting number %d!";
 
 	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
 		perror("socket failed");
@@ -34,7 +34,9 @@ int main(int argc, char const *argv[]) {
 		perror("listen");
 		exit(EXIT_FAILURE);
 	}
-
+	int counter = 1;
+	char resp[strlen(hello) + 16];
+	while(1) {
 	if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
 					(socklen_t*)&addrlen))<0) {
 		perror("accept");
@@ -44,8 +46,10 @@ int main(int argc, char const *argv[]) {
     read(new_socket, buffer, BUFFER_SIZE);
 	printf("%s\n", buffer);
 
-    send(new_socket ,hello ,strlen(hello), 0);
+	snprintf(resp,sizeof(resp),hello,counter);
+    send(new_socket ,resp ,strlen(resp), 0);
 	printf("Hello message sent\n");
-
+	counter++;
+	}
     return 0;
 }
