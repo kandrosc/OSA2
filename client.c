@@ -11,7 +11,7 @@
 int main(int argc, char const *argv[]) {
 	int sock = 0;
 	struct sockaddr_in serv_addr;
-	char *hello = "Hello from client";
+	char *hello = "u";
 	char buffer[BUFFER_SIZE] = {0};
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -34,10 +34,12 @@ int main(int argc, char const *argv[]) {
 	}
 
     send(sock, hello, strlen(hello), 0 );
-	printf("Hello message sent\n");
+	printf("Sent greeting to server\n");
 
+	while(1) {
     read(sock, buffer, BUFFER_SIZE);
-	printf("%s\n", buffer);
+	printf("%s", buffer);
+	}
 
 	return 0;
 }
