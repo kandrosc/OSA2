@@ -26,7 +26,7 @@ void * serve_client(void * arg) {
 		pthread_mutex_lock(&lock);
 
     	nanosleep((const struct timespec[]){{5, 0}}, NULL);
-		send(socket ,localbuffer ,strlen(localbuffer), 0);
+		send(socket ,message ,strlen(message), 0);
 
     	pthread_mutex_unlock(&lock);
 		nanosleep((const struct timespec[]){{1, 0}}, NULL);
