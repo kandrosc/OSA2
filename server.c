@@ -46,9 +46,10 @@ void * receive_events(void * arg) {
 	void * info_ptr;
 	int socket = (int)(intptr_t)arg;
 	info.terminate = 0;
+	info_ptr = (void *)malloc(sizeof(struct eventinfo));
 	while(info.terminate == 0) {
 		read(socket,info_ptr,sizeof(info_ptr));
-		info = *(struct eventinfo *)info_ptr;
+		info = *(struct eventinfo *)info_ptr; // problem child
 		printf("%s\t%s\t%s\t%s\n",info.timestamp,info.host,info.monitored,info.event);
 	}
 	return NULL;

@@ -65,6 +65,7 @@ void * send_events(void * arg) {
 
     char buffer[EVENT_BUFFER_SIZE];
 
+    // May have to move this to main
     (void) signal(SIGINT, catch);
 	if(sigsetjmp(state,1)) {
         inotify_rm_watch(inotify_fd, watch_des);
@@ -73,7 +74,7 @@ void * send_events(void * arg) {
         gettimeofday(&current_time, NULL);
         snprintf(info.timestamp,FIELDLEN,"%ld.%ld", current_time.tv_sec, current_time.tv_usec);
         info.terminate = 1;
-        send(socket,info_ptr,sizeof(info),0);
+        send(socket,info_ptr,sizeof(info_ptr),0);
         return NULL;
     }
 
