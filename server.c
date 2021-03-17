@@ -21,20 +21,22 @@ pthread_t * user_clients;
 pthread_t * obs_clients;
 pthread_mutex_t lock;
 char buffer[BUFFER_SIZE] = {0};
+struct eventinfo * critical_event_data; // This is the critical data structure that holds the most recent event data for each observer!
 
 
 void * serve_client(void * arg) {
-	char localbuffer[BUFFER_SIZE] = "u";
-	char newmessage[strlen(message)+16];
-	int socket = (int)(intptr_t)arg;
+	char localbuffer[BUFFER_SIZE] = "u"; // If user client sends the letter "u", it is still alive, and awaiting updates
+	struct process_args pargs = *(struct process_args *)arg;
+	int socket = pargs.socket;
+	int seconds = (int)pargs.interval;
 	while(localbuffer[0]==117 && strlen(localbuffer)==1) {
 		pthread_mutex_lock(&lock);
 
-    	nanosleep((const struct timespec[]){{5, 0}}, NULL);
+    	nanosleep((const struct timespec[]){{seconds, (pargs.interval-seconds)*1000000000L}}, NULL);
 		send(socket ,message ,strlen(message), 0);
 
     	pthread_mutex_unlock(&lock);
-		nanosleep((const struct timespec[]){{1, 0}}, NULL);
+		nanosleep((const struct timespec[]){{0, 100000000L}}, NULL);
 		read(socket, localbuffer, BUFFER_SIZE);
 
 	}
@@ -44,13 +46,24 @@ void * serve_client(void * arg) {
 void * receive_events(void * arg) {
 	struct eventinfo info;
 	void * info_ptr;
-	int socket = (int)(intptr_t)arg;
+	struct process_args pargs = *(struct process_args *)arg;
+	int socket = pargs.socket;
+	int proc_id = pargs.proc_id;
 	info.terminate = 0;
 	info_ptr = (void *)malloc(sizeof(struct eventinfo));
+	// Add new structure for the new observer client
+	pthread_mutex_lock(&lock);
+	critical_event_data = (struct eventinfo *)realloc(critical_event_data, sizeof(struct eventinfo)*proc_id);
+    pthread_mutex_unlock(&lock);
 	while(info.terminate == 0) {
-		read(socket,info_ptr,sizeof(info_ptr));
-		info = *(struct eventinfo *)info_ptr; // problem child
-		printf("%s\t%s\t%s\t%s\n",info.timestamp,info.host,info.monitored,info.event);
+		read(socket,info_ptr,sizeof(info));
+		info = *(struct eventinfo *)info_ptr;
+		// Write updated info to critical data structure
+		pthread_mutex_lock(&lock);
+		critical_event_data[proc_id] = info;
+    	pthread_mutex_unlock(&lock);
+		printf("%s\t%s\t%s\t%s\n",critical_event_data[proc_id].timestamp,critical_event_data[proc_id].host,critical_event_data[proc_id].monitored,critical_event_data[proc_id].event);
+
 	}
 	return NULL;
 }
@@ -64,6 +77,12 @@ int main(int argc, char const *argv[]) {
 	int error;
 	int user_client_count = 1;
 	int obs_client_count = 1;
+
+	struct process_args pargs;
+	void * pargs_ptr;
+
+	pargs_ptr = & pargs;
+	pargs.interval = 5;
 
 	if (pthread_mutex_init(&lock, NULL) != 0) { 
         printf("\n mutex init has failed\n"); 
@@ -103,15 +122,16 @@ int main(int argc, char const *argv[]) {
 
 		sockets = (int *)realloc(sockets,sizeof(int)*user_client_count);
 		sockets[user_client_count-1] = new_socket;
+		pargs.socket = new_socket;
 
 		read(new_socket, buffer, BUFFER_SIZE);
 		printf("%s\n",buffer);
 		if(buffer[0]==117 && strlen(buffer)==1) {
-			
+			pargs.proc_id = user_client_count;
 			user_clients = (pthread_t * ) realloc(user_clients, sizeof(pthread_t)*user_client_count);
 			error = pthread_create(&(user_clients[user_client_count-1]), 
 								NULL, 
-								&serve_client, (void *)(intptr_t)sockets[user_client_count-1]); 
+								&serve_client, pargs_ptr); 
 			if (error != 0) 
 				printf("\nThread can't be created :[%s]", 
 					strerror(error));
@@ -121,11 +141,11 @@ int main(int argc, char const *argv[]) {
 		}
 
 		else if(buffer[0]==111 && strlen(buffer)==1) {
-			
+			pargs.proc_id = obs_client_count;
 			obs_clients = (pthread_t * ) realloc(obs_clients, sizeof(pthread_t)*obs_client_count);
 			error = pthread_create(&(obs_clients[obs_client_count-1]), 
 								NULL, 
-								&receive_events, (void *)(intptr_t)sockets[obs_client_count-1]); 
+								&receive_events, pargs_ptr); 
 			if (error != 0) 
 				printf("\nThread can't be created :[%s]", 
 					strerror(error));

@@ -6,3 +6,9 @@ struct eventinfo {
     char event[FIELDLEN];
     int terminate;
 };
+
+struct process_args {
+    int socket;
+    int proc_id;
+    double interval;
+};

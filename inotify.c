@@ -65,21 +65,8 @@ void * send_events(void * arg) {
 
     char buffer[EVENT_BUFFER_SIZE];
 
-    // May have to move this to main
-    (void) signal(SIGINT, catch);
-	if(sigsetjmp(state,1)) {
-        inotify_rm_watch(inotify_fd, watch_des);
-        close(inotify_fd);
-        snprintf(info.event,FIELDLEN,"%s IN_DELETE_SELF",filename);
-        gettimeofday(&current_time, NULL);
-        snprintf(info.timestamp,FIELDLEN,"%ld.%ld", current_time.tv_sec, current_time.tv_usec);
-        info.terminate = 1;
-        send(socket,info_ptr,sizeof(info_ptr),0);
-        return NULL;
-    }
-
     // start to monitor
-    while(1) {
+    while(info.terminate == 0) {
         // read 
         int bytesRead = read(inotify_fd, buffer, EVENT_BUFFER_SIZE), bytesProcessed = 0;
         if(bytesRead < 0) { // read error
@@ -146,7 +133,7 @@ void * send_events(void * arg) {
                     snprintf(info.event,FIELDLEN,"%s IN_IGNORED IN_ISDIR\n",name);
                 else
                     snprintf(info.event,FIELDLEN,"%s IN_IGNORED\n",name);
-                return 0; // File or directory was deleted!
+                info.terminate = 1; // File or directory was deleted!
             }
             else
                 snprintf(info.event,FIELDLEN,"OTHER_EVENT\n");
@@ -167,6 +154,13 @@ int main(int argc, char const *argv[]) {
 	char buffer[BUFFER_SIZE] = {0};
     int error;
     pthread_t t;
+    struct eventinfo info;
+    char * filename = "../E";
+    struct timeval current_time;
+    void * info_ptr;
+
+
+
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("socket failed");
@@ -185,6 +179,20 @@ int main(int argc, char const *argv[]) {
 		perror("connect");
 		return -1;
 	}
+
+    // Sends one last event to the server, and lets the server know that this client will be terminated
+    (void) signal(SIGINT, catch);
+	if(sigsetjmp(state,1)) {
+        snprintf(info.monitored,FIELDLEN,"%s",filename);
+        snprintf(info.host,FIELDLEN,"%s","127.0.0.1");
+        snprintf(info.event,FIELDLEN,"%s IN_DELETE_SELF",filename);
+        gettimeofday(&current_time, NULL);
+        snprintf(info.timestamp,FIELDLEN,"%ld.%ld", current_time.tv_sec, current_time.tv_usec);
+        info.terminate = 1;
+        info_ptr = &info;
+        send(sock,info_ptr,sizeof(info),0);
+        return 0;
+    }
 
 
     send(sock, hello, strlen(hello), 0 );
