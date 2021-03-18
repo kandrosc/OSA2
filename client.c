@@ -26,7 +26,7 @@ int main(int argc, char const *argv[]) {
 	char buffer[BUFFER_SIZE] = {0};
 	void * num_events_ptr;
 	int num_events;
-	char recent_events[FIELDLEN*4+3];
+	char * recent_events;
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("socket failed");
@@ -56,12 +56,14 @@ int main(int argc, char const *argv[]) {
 	}
 
 	num_events_ptr = (int *)malloc(sizeof(int));
+	recent_events = (char *)malloc(FIELDLEN*4+4);
 	while(1) {
 	
     send(sock, hello, strlen(hello), 0 );
 	read(sock,num_events_ptr,sizeof(int));
 	num_events = *(int *)num_events_ptr;
-    read(sock, recent_events, (FIELDLEN*4+4));
+	recent_events = (char *)realloc(recent_events,(FIELDLEN*4+4)*num_events);
+    read(sock, recent_events, (FIELDLEN*4+4)*num_events);
 	printf("%s", recent_events);
 	}
 
