@@ -12,3 +12,15 @@ struct process_args {
     int proc_id;
     double interval;
 };
+
+struct server_args {
+    double interval;
+    int port;
+    char logfile[FIELDLEN];
+};
+
+struct client_args {
+    char address[FIELDLEN];
+    int port;
+    char filename[FIELDLEN];
+};

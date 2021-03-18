@@ -12,7 +12,7 @@
 #include <signal.h>
 #include "notapp.h"
 
-#define PORT        8080
+#define PORT 8080
 #define BUFFER_SIZE 1024
 #define EVENT_STRUCT_SIZE sizeof(struct eventinfo) 
 #define EVENT_BUFFER_SIZE (10 * (EVENT_STRUCT_SIZE + NAME_MAX + 1))
@@ -106,7 +106,8 @@ void * receive_events(void * arg) {
 	return NULL;
 }
 
-int main(int argc, char const *argv[]) {
+void * server_main(void * arg) {
+	struct server_args sargs = *(struct server_args *)arg;
 	int server_fd, new_socket;
 	int * sockets;
 	struct sockaddr_in address;
@@ -120,11 +121,11 @@ int main(int argc, char const *argv[]) {
 	void * pargs_ptr;
 
 	pargs_ptr = & pargs;
-	pargs.interval = 5;
+	pargs.interval = sargs.interval;
 
 	if (pthread_mutex_init(&lock, NULL) != 0) { 
         printf("\n mutex init has failed\n"); 
-        return 1; 
+        return NULL; 
     } 
 
 	user_clients = (pthread_t * )malloc(sizeof(pthread_t));
@@ -137,7 +138,7 @@ int main(int argc, char const *argv[]) {
 
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
-	address.sin_port = htons(PORT);
+	address.sin_port = htons(sargs.port);
 
 	if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
 		perror("bind failed");
@@ -160,7 +161,10 @@ int main(int argc, char const *argv[]) {
 			send(sockets[i],killsig_ptr,sizeof(int),0);
 			shutdown(sockets[i],SHUT_WR);
 		}
-		return 0;
+		free(user_clients);
+		free(obs_clients);
+		free(sockets);
+		return NULL;
 	}
 
 	while(1) {
@@ -212,8 +216,39 @@ int main(int argc, char const *argv[]) {
 
 	}
 
-    //send(new_socket ,resp ,strlen(resp), 0);
-	//printf("Hello message sent\n");
+    return NULL;
+}
 
-    return 0;
+int main(int argc, char const *argv[]) {
+	if(argc <4) {
+		printf("Too few arguments supplied\n");
+		return 1;
+	}
+
+	if(strcmp(argv[1],"-s") == 0) {
+		if(strcmp(argv[2],"-t") != 0) {
+			printf("Inverval flag (-t) not supplied\n");
+			return 1;
+		}
+		struct server_args sargs;
+		void * sargs_ptr;
+		sargs_ptr = &sargs;
+		sargs.interval = atof(argv[3]);
+		if(argc >=6) {
+			if(strcmp(argv[4],"-p") != 0) {
+				printf("Port flag (-p) not supplied\n");
+				return 1;
+			}
+			sargs.port = atoi(argv[5]);
+			if(argc ==8) {
+				if(strcmp(argv[4],"-l") != 0) {
+					printf("Logfile flag (-l) not supplied\n");
+					return 1;
+				}
+			sargs.port = atoi(argv[7]);
+			}
+		}
+		else {sargs.port = 8080;}
+		server_main(sargs_ptr);
+	}
 }
