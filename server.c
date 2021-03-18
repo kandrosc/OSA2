@@ -40,6 +40,8 @@ void * serve_client(void * arg) {
 	int socket = pargs.socket;
 	int seconds = (int)pargs.interval;
 	void * critical_event_len_ptr;
+	char * template_event = "%s\t%s\t%s\t%s\n";
+	char * template_no_event = "%s";
 	critical_event_len_ptr = &critical_event_len;
 	updates = (char *)malloc(FIELDLEN*4+4);
 	while(localbuffer[0]==117 && strlen(localbuffer)==1) {
@@ -50,7 +52,12 @@ void * serve_client(void * arg) {
 		if(critical_event_len>0) {
 			updates = (char *)realloc(updates,(FIELDLEN*4+4)*critical_event_len);
 			for(int i=0;i<critical_event_len;i++) {
-				snprintf(event,FIELDLEN*4+4,"%s\t%s\t%s\t%s\n",critical_event_data[i].timestamp,critical_event_data[i].host,critical_event_data[i].monitored,critical_event_data[i].event);
+				if(strlen(critical_event_data[i].event) == 0) {
+					snprintf(event,FIELDLEN*4+4,template_no_event,"");
+				}
+				else{
+					snprintf(event,FIELDLEN*4+4,template_event,critical_event_data[i].timestamp,critical_event_data[i].host,critical_event_data[i].monitored,critical_event_data[i].event);
+				}
 				strcat(updates,event);
 			}
 		}
@@ -65,6 +72,7 @@ void * serve_client(void * arg) {
 
 void * receive_events(void * arg) {
 	struct eventinfo info;
+	struct eventinfo emptyinfo;
 	void * info_ptr;
 	struct process_args pargs = *(struct process_args *)arg;
 	int socket = pargs.socket;
@@ -85,13 +93,16 @@ void * receive_events(void * arg) {
 		// Write updated info to critical data structure
 		pthread_mutex_lock(&lock);
 		critical_event_data[proc_id-1] = info;
-		critical_event_len = proc_id;
+		//critical_event_len = proc_id; // Must fix so out of order updates are displayed correctly
     	pthread_mutex_unlock(&lock);
 		//printf("%s\t%s\t%s\t%s\n",critical_event_data[proc_id-1].timestamp,critical_event_data[proc_id-1].host,critical_event_data[proc_id-1].monitored,critical_event_data[proc_id-1].event);
 
 	}
 	is_alive = -1;
 	send(socket,is_alive_ptr,sizeof(int),0);
+	pthread_mutex_lock(&lock);
+	critical_event_data[proc_id-1] = emptyinfo;
+	pthread_mutex_unlock(&lock);
 	return NULL;
 }
 
@@ -160,6 +171,7 @@ int main(int argc, char const *argv[]) {
 			exit(EXIT_FAILURE);
 		}
 
+
 		sockets = (int *)realloc(sockets,sizeof(int)*(user_client_count+obs_client_count-1));
 		sockets[(user_client_count+obs_client_count)-2] = new_socket;
 		pargs.socket = new_socket;
@@ -191,7 +203,11 @@ int main(int argc, char const *argv[]) {
 					strerror(error));
 
 			//printf("%d observer client(s) connected!\n",obs_client_count);
+			pthread_mutex_lock(&lock);
+			critical_event_len = obs_client_count;
+			pthread_mutex_unlock(&lock);
 			obs_client_count++;
+
 		}
 
 	}
