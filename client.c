@@ -61,8 +61,8 @@ int main(int argc, char const *argv[]) {
     send(sock, hello, strlen(hello), 0 );
 	read(sock,num_events_ptr,sizeof(int));
 	num_events = *(int *)num_events_ptr;
-    read(sock, recent_events, (FIELDLEN*4+3));
-	printf("%s\n", recent_events);
+    read(sock, recent_events, (FIELDLEN*4+4));
+	printf("%s", recent_events);
 	}
 
 	return 0;

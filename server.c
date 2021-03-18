@@ -27,21 +27,27 @@ int critical_event_len = 0;
 
 void * serve_client(void * arg) {
 	char localbuffer[BUFFER_SIZE] = "u"; // If user client sends the letter "u", it is still alive, and awaiting updates
-	char updates[FIELDLEN*4+3];
+	char event[FIELDLEN*4+4];
+	char * updates;
 	struct process_args pargs = *(struct process_args *)arg;
 	int socket = pargs.socket;
 	int seconds = (int)pargs.interval;
 	void * critical_event_len_ptr;
 	critical_event_len_ptr = &critical_event_len;
+	updates = (char *)malloc(FIELDLEN*4+4);
 	while(localbuffer[0]==117 && strlen(localbuffer)==1) {
-
+		strcpy(updates,"");
     	nanosleep((const struct timespec[]){{seconds, (pargs.interval-seconds)*1000000000L}}, NULL);
 		pthread_mutex_lock(&lock);
 		send(socket,critical_event_len_ptr,sizeof(int),0);
 		if(critical_event_len>0) {
-		snprintf(updates,FIELDLEN*4+3,"%s\t%s\t%s\t%s",critical_event_data[0].timestamp,critical_event_data[0].host,critical_event_data[0].monitored,critical_event_data[0].event);
+			updates = (char *)realloc(updates,(FIELDLEN*4+3)*critical_event_len);
+			for(int i=0;i<critical_event_len;i++) {
+				snprintf(event,FIELDLEN*4+4,"%s\t%s\t%s\t%s\n",critical_event_data[i].timestamp,critical_event_data[i].host,critical_event_data[i].monitored,critical_event_data[i].event);
+				strcat(updates,event);
+			}
 		}
-		send(socket ,updates ,FIELDLEN*4+3, 0);
+		send(socket ,updates ,FIELDLEN*4+4, 0);
     	pthread_mutex_unlock(&lock);
 		nanosleep((const struct timespec[]){{0, 100000000L}}, NULL);
 		read(socket, localbuffer, BUFFER_SIZE);
