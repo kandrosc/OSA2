@@ -8,12 +8,15 @@
 #include <stdint.h>
 #include <limits.h>
 #include <time.h>
+#include <setjmp.h>
+#include <signal.h>
 #include "notapp.h"
 
 #define PORT        8080
 #define BUFFER_SIZE 1024
 #define EVENT_STRUCT_SIZE sizeof(struct eventinfo) 
 #define EVENT_BUFFER_SIZE (10 * (EVENT_STRUCT_SIZE + NAME_MAX + 1))
+sigjmp_buf state;
 
 
 char * message = "This is a message from the server. The server says howdy!";
@@ -24,6 +27,10 @@ char buffer[BUFFER_SIZE] = {0};
 struct eventinfo * critical_event_data; // This is the critical data structure that holds the most recent event data for each observer!
 int critical_event_len = 0;
 
+// Call when CTRL-C is pressed
+void catch() {
+    siglongjmp(state,1);
+}
 
 void * serve_client(void * arg) {
 	char localbuffer[BUFFER_SIZE] = "u"; // If user client sends the letter "u", it is still alive, and awaiting updates
@@ -64,11 +71,15 @@ void * receive_events(void * arg) {
 	int proc_id = pargs.proc_id;
 	info.terminate = 0;
 	info_ptr = (void *)malloc(sizeof(struct eventinfo));
+	int is_alive = 0;
+	int * is_alive_ptr;
+	is_alive_ptr = &is_alive;
 	// Add new structure for the new observer client
 	pthread_mutex_lock(&lock);
 	critical_event_data = (struct eventinfo *)realloc(critical_event_data, sizeof(struct eventinfo)*proc_id);
     pthread_mutex_unlock(&lock);
 	while(info.terminate == 0) {
+		send(socket,is_alive_ptr,sizeof(int),0);
 		read(socket,info_ptr,sizeof(info));
 		info = *(struct eventinfo *)info_ptr;
 		// Write updated info to critical data structure
@@ -79,6 +90,8 @@ void * receive_events(void * arg) {
 		//printf("%s\t%s\t%s\t%s\n",critical_event_data[proc_id-1].timestamp,critical_event_data[proc_id-1].host,critical_event_data[proc_id-1].monitored,critical_event_data[proc_id-1].event);
 
 	}
+	is_alive = -1;
+	send(socket,is_alive_ptr,sizeof(int),0);
 	return NULL;
 }
 
@@ -126,6 +139,19 @@ int main(int argc, char const *argv[]) {
 	}
 
 
+	// Send the shutdown signal (-1) to all observer and user clients
+    (void) signal(SIGINT, catch);
+    (void) signal(SIGTERM, catch);
+	if(sigsetjmp(state,1)) {
+		int killsig = -1;
+		int * killsig_ptr = &killsig;
+		for(int i=0;i<(user_client_count+obs_client_count-2);i++) {
+			send(sockets[i],killsig_ptr,sizeof(int),0);
+			shutdown(sockets[i],SHUT_WR);
+		}
+		return 0;
+	}
+
 	while(1) {
 
 		if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
@@ -134,12 +160,12 @@ int main(int argc, char const *argv[]) {
 			exit(EXIT_FAILURE);
 		}
 
-		sockets = (int *)realloc(sockets,sizeof(int)*user_client_count);
-		sockets[user_client_count-1] = new_socket;
+		sockets = (int *)realloc(sockets,sizeof(int)*(user_client_count+obs_client_count-1));
+		sockets[(user_client_count+obs_client_count)-2] = new_socket;
 		pargs.socket = new_socket;
 
 		read(new_socket, buffer, BUFFER_SIZE);
-		printf("%s\n",buffer);
+		//printf("%s\n",buffer);
 		if(buffer[0]==117 && strlen(buffer)==1) {
 			pargs.proc_id = user_client_count;
 			user_clients = (pthread_t * ) realloc(user_clients, sizeof(pthread_t)*user_client_count);
@@ -150,7 +176,7 @@ int main(int argc, char const *argv[]) {
 				printf("\nThread can't be created :[%s]", 
 					strerror(error));
 
-			printf("%d user client(s) connected!\n",user_client_count);
+			//printf("%d user client(s) connected!\n",user_client_count);
 			user_client_count++;
 		}
 
@@ -164,7 +190,7 @@ int main(int argc, char const *argv[]) {
 				printf("\nThread can't be created :[%s]", 
 					strerror(error));
 
-			printf("%d observer client(s) connected!\n",obs_client_count);
+			//printf("%d observer client(s) connected!\n",obs_client_count);
 			obs_client_count++;
 		}
 

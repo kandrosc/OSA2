@@ -47,6 +47,7 @@ int main(int argc, char const *argv[]) {
 	}
 
 	(void) signal(SIGINT, catch);
+	(void) signal(SIGTERM, catch);
 	if(sigsetjmp(state,1)) {
 		printf("Waiting for 1 last read, please wait...\n");
 		read(sock, buffer, BUFFER_SIZE);
@@ -62,6 +63,9 @@ int main(int argc, char const *argv[]) {
     send(sock, hello, strlen(hello), 0 );
 	read(sock,num_events_ptr,sizeof(int));
 	num_events = *(int *)num_events_ptr;
+	if(num_events < 0) {
+		return 0; // This means the server is killing all threads
+	}
 	recent_events = (char *)realloc(recent_events,(FIELDLEN*4+4)*num_events);
     read(sock, recent_events, (FIELDLEN*4+4)*num_events);
 	printf("%s", recent_events);

@@ -32,6 +32,19 @@ int check_name(char * name) {
     return 1;
 }
 
+// Checks to see if server is sending a signal that will tell send events to stay alive
+void * check_is_alive(void *arg) {
+    int socket = (int)(intptr_t)arg;
+    int is_alive=0;
+    int * is_alive_ptr;
+    is_alive_ptr = &is_alive;
+
+    while(is_alive == 0) {
+        read(socket,is_alive_ptr,sizeof(int));
+        is_alive = *(int *)is_alive_ptr;
+    }
+}
+
 void * send_events(void * arg) {
     int socket = (int)(intptr_t)arg;
     struct eventinfo info;
@@ -41,10 +54,12 @@ void * send_events(void * arg) {
     struct timeval current_time;
 
 
+
     // create a new inotify file descriptor
     // it has an associated watch list
     // read from it to get events
     info_ptr = &info;
+    
     int inotify_fd = inotify_init();
     if(inotify_fd < 0) {
         perror ("inotify_init");
@@ -154,6 +169,7 @@ int main(int argc, char const *argv[]) {
 	char buffer[BUFFER_SIZE] = {0};
     int error;
     pthread_t t;
+    pthread_t u;
     struct eventinfo info;
     char * filename = "../E";
     struct timeval current_time;
@@ -182,6 +198,7 @@ int main(int argc, char const *argv[]) {
 
     // Sends one last event to the server, and lets the server know that this client will be terminated
     (void) signal(SIGINT, catch);
+    (void) signal(SIGTERM, catch);
 	if(sigsetjmp(state,1)) {
         snprintf(info.monitored,FIELDLEN,"%s",filename);
         snprintf(info.host,FIELDLEN,"%s","127.0.0.1");
@@ -196,12 +213,13 @@ int main(int argc, char const *argv[]) {
 
 
     send(sock, hello, strlen(hello), 0 );
-    error = pthread_create(&(t), 
-                    NULL, 
-                    &send_events, (void *)(intptr_t)sock); 
+    error = pthread_create(&(t), NULL, &send_events, (void *)(intptr_t)sock); 
     if (error != 0) 
         printf("\nThread can't be created :[%s]", 
             strerror(error));
-    pthread_join(t, NULL);
+
+    // Runs in parallel to send events, will check to see if the server is still alive (server will send same code if just this process is terminated)
+    error = pthread_create(&u,NULL,&check_is_alive,(void *)(intptr_t)sock);
+    pthread_join(u, NULL);
 	return 0;
 }
