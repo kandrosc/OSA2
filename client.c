@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <setjmp.h>
 #include <signal.h>
+#include "notapp.h"
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
@@ -23,6 +24,9 @@ int main(int argc, char const *argv[]) {
 	char *hello = "u";
 	char *goodbye = "c";
 	char buffer[BUFFER_SIZE] = {0};
+	void * num_events_ptr;
+	int num_events;
+	char recent_events[FIELDLEN*4+3];
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("socket failed");
@@ -51,12 +55,14 @@ int main(int argc, char const *argv[]) {
 		return 0;
 	}
 
+	num_events_ptr = (int *)malloc(sizeof(int));
 	while(1) {
-
+	
     send(sock, hello, strlen(hello), 0 );
-
-    read(sock, buffer, BUFFER_SIZE);
-	printf("%s\n", buffer);
+	read(sock,num_events_ptr,sizeof(int));
+	num_events = *(int *)num_events_ptr;
+    read(sock, recent_events, (FIELDLEN*4+3));
+	printf("%s\n", recent_events);
 	}
 
 	return 0;

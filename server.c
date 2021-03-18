@@ -22,19 +22,26 @@ pthread_t * obs_clients;
 pthread_mutex_t lock;
 char buffer[BUFFER_SIZE] = {0};
 struct eventinfo * critical_event_data; // This is the critical data structure that holds the most recent event data for each observer!
+int critical_event_len = 0;
 
 
 void * serve_client(void * arg) {
 	char localbuffer[BUFFER_SIZE] = "u"; // If user client sends the letter "u", it is still alive, and awaiting updates
+	char updates[FIELDLEN*4+3];
 	struct process_args pargs = *(struct process_args *)arg;
 	int socket = pargs.socket;
 	int seconds = (int)pargs.interval;
+	void * critical_event_len_ptr;
+	critical_event_len_ptr = &critical_event_len;
 	while(localbuffer[0]==117 && strlen(localbuffer)==1) {
-		pthread_mutex_lock(&lock);
 
     	nanosleep((const struct timespec[]){{seconds, (pargs.interval-seconds)*1000000000L}}, NULL);
-		send(socket ,message ,strlen(message), 0);
-
+		pthread_mutex_lock(&lock);
+		send(socket,critical_event_len_ptr,sizeof(int),0);
+		if(critical_event_len>0) {
+		snprintf(updates,FIELDLEN*4+3,"%s\t%s\t%s\t%s",critical_event_data[0].timestamp,critical_event_data[0].host,critical_event_data[0].monitored,critical_event_data[0].event);
+		}
+		send(socket ,updates ,FIELDLEN*4+3, 0);
     	pthread_mutex_unlock(&lock);
 		nanosleep((const struct timespec[]){{0, 100000000L}}, NULL);
 		read(socket, localbuffer, BUFFER_SIZE);
@@ -60,9 +67,10 @@ void * receive_events(void * arg) {
 		info = *(struct eventinfo *)info_ptr;
 		// Write updated info to critical data structure
 		pthread_mutex_lock(&lock);
-		critical_event_data[proc_id] = info;
+		critical_event_data[proc_id-1] = info;
+		critical_event_len = proc_id;
     	pthread_mutex_unlock(&lock);
-		printf("%s\t%s\t%s\t%s\n",critical_event_data[proc_id].timestamp,critical_event_data[proc_id].host,critical_event_data[proc_id].monitored,critical_event_data[proc_id].event);
+		//printf("%s\t%s\t%s\t%s\n",critical_event_data[proc_id-1].timestamp,critical_event_data[proc_id-1].host,critical_event_data[proc_id-1].monitored,critical_event_data[proc_id-1].event);
 
 	}
 	return NULL;

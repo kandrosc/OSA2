@@ -80,14 +80,14 @@ void * send_events(void * arg) {
             else {name = filename;}
             if (event->mask & IN_CREATE)
                 if (event->mask & IN_ISDIR)
-                    snprintf(info.event,FIELDLEN,"%s IN_CREATE IN_ISDIR\n", name);
+                    snprintf(info.event,FIELDLEN,"%s IN_CREATE IN_ISDIR", name);
                 else
-                    snprintf(info.event,FIELDLEN,"%s IN_CREATE\n", name);
+                    snprintf(info.event,FIELDLEN,"%s IN_CREATE", name);
             else if ((event->mask & IN_DELETE))
                 if (event->mask & IN_ISDIR)
-                    snprintf(info.event,FIELDLEN,"%s IN_DELETE IN_ISDIR\n", name);
+                    snprintf(info.event,FIELDLEN,"%s IN_DELETE IN_ISDIR", name);
                 else
-                    snprintf(info.event,FIELDLEN,"%s IN_DELETE\n", name);
+                    snprintf(info.event,FIELDLEN,"%s IN_DELETE", name);
             else if ((event->mask & IN_ATTRIB))
                 if(event->mask & IN_ISDIR)
                     snprintf(info.event,FIELDLEN,"%s IN_ATTRIB IN_ISDIR\n",name);
@@ -95,48 +95,48 @@ void * send_events(void * arg) {
                     snprintf(info.event,FIELDLEN,"%s IN_ATTRIB\n",name);
             else if ((event->mask & IN_OPEN))
                 if(event->mask & IN_ISDIR)
-                    snprintf(info.event,FIELDLEN,"%s IN_OPEN IN_ISDIR\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_OPEN IN_ISDIR",name);
                 else
-                    snprintf(info.event,FIELDLEN,"%s IN_OPEN\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_OPEN",name);
             else if ((event->mask & IN_ACCESS))
                 if(event->mask & IN_ISDIR)
-                    snprintf(info.event,FIELDLEN,"%s IN_ACCESS IN_ISDIR\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_ACCESS IN_ISDIR",name);
                 else
-                    snprintf(info.event,FIELDLEN,"%s IN_ACCESS\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_ACCESS",name);
             else if ((event->mask & IN_MODIFY))
                 if(event->mask & IN_ISDIR)
-                    snprintf(info.event,FIELDLEN,"%s IN_MODIFY IN_ISDIR\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_MODIFY IN_ISDIR",name);
                 else
-                    snprintf(info.event,FIELDLEN,"%s IN_MODIFY\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_MODIFY",name);
             else if ((event->mask & IN_CLOSE_WRITE))
                 if(event->mask & IN_ISDIR)
-                    snprintf(info.event,FIELDLEN,"%s IN_CLOSE_WRITE IN_ISDIR\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_CLOSE_WRITE IN_ISDIR",name);
                 else
-                    snprintf(info.event,FIELDLEN,"%s IN_CLOSE_WRITE\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_CLOSE_WRITE",name);
             else if ((event->mask & IN_CLOSE_NOWRITE))
                 if(event->mask & IN_ISDIR)
-                    snprintf(info.event,FIELDLEN,"%s IN_CLOSE_NOWRITE IN_ISDIR\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_CLOSE_NOWRITE IN_ISDIR",name);
                 else
-                    snprintf(info.event,FIELDLEN,"%s IN_CLOSE_NOWRITE\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_CLOSE_NOWRITE",name);
             else if ((event->mask & IN_MOVED_FROM))
                 if(event->mask & IN_ISDIR)
-                    snprintf(info.event,FIELDLEN,"%s IN_MOVED_FROM IN_ISDIR\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_MOVED_FROM IN_ISDIR",name);
                 else
-                    snprintf(info.event,FIELDLEN,"%s IN_MOVED_FROM\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_MOVED_FROM",name);
             else if ((event->mask & IN_MOVED_TO))
                 if(event->mask & IN_ISDIR)
-                    snprintf(info.event,FIELDLEN,"%s IN_MOVED_TO IN_ISDIR\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_MOVED_TO IN_ISDIR",name);
                 else
-                    snprintf(info.event,FIELDLEN,"%s IN_MOVED_TO\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_MOVED_TO",name);
             else if ((event->mask & IN_IGNORED)) {
                 if(event->mask & IN_ISDIR)
-                    snprintf(info.event,FIELDLEN,"%s IN_IGNORED IN_ISDIR\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_IGNORED IN_ISDIR",name);
                 else
-                    snprintf(info.event,FIELDLEN,"%s IN_IGNORED\n",name);
+                    snprintf(info.event,FIELDLEN,"%s IN_IGNORED",name);
                 info.terminate = 1; // File or directory was deleted!
             }
             else
-                snprintf(info.event,FIELDLEN,"OTHER_EVENT\n");
+                snprintf(info.event,FIELDLEN,"OTHER_EVENT");
 
             bytesProcessed += EVENT_STRUCT_SIZE + event->len;
         }
