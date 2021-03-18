@@ -27,6 +27,7 @@ int main(int argc, char const *argv[]) {
 	void * num_events_ptr;
 	int num_events;
 	char * recent_events;
+	char * header = "TIME\t\t\tHOST\t\tMONITORED\t\tEVENT";
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("socket failed");
@@ -58,17 +59,21 @@ int main(int argc, char const *argv[]) {
 
 	num_events_ptr = (int *)malloc(sizeof(int));
 	recent_events = (char *)malloc(FIELDLEN*4+4);
+	system("clear");
+	printf("%s\n",header);
 	while(1) {
 	
-    send(sock, hello, strlen(hello), 0 );
-	read(sock,num_events_ptr,sizeof(int));
-	num_events = *(int *)num_events_ptr;
-	if(num_events < 0) {
-		return 0; // This means the server is killing all threads
-	}
-	recent_events = (char *)realloc(recent_events,(FIELDLEN*4+4)*num_events);
-    read(sock, recent_events, (FIELDLEN*4+4)*num_events);
-	printf("%s", recent_events);
+		send(sock, hello, strlen(hello), 0 );
+		read(sock,num_events_ptr,sizeof(int));
+		num_events = *(int *)num_events_ptr;
+		if(num_events < 0) {
+			return 0; // This means the server is killing all threads
+		}
+		recent_events = (char *)realloc(recent_events,(FIELDLEN*4+4)*num_events);
+		read(sock, recent_events, (FIELDLEN*4+4)*num_events);
+		system("clear");
+		printf("%s\n",header);
+		printf("%s", recent_events);
 	}
 
 	return 0;
