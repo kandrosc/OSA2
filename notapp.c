@@ -329,7 +329,6 @@ void * user_main(void *arg) {
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_port = htons(cargs.port);
 
-	printf("%s\n",cargs.address);
 	// Convert IPv4 and IPv6 addresses from text to binary form
 	if(inet_pton(AF_INET, cargs.address, &serv_addr.sin_addr)<=0) {
 		printf("\nInvalid address/ Address not supported \n");
@@ -382,12 +381,20 @@ void * server_main(void * arg) {
 	int error;
 	int user_client_count = 1;
 	int obs_client_count = 1;
+	FILE * logfile;
+	int writetologfile = 0;
 
 	struct process_args pargs;
 	void * pargs_ptr;
 
 	pargs_ptr = & pargs;
 	pargs.interval = sargs.interval;
+
+	if(strlen(sargs.logfile)>0) {
+		writetologfile = 1;
+		logfile = fopen(sargs.logfile, "a");
+		fputs("A new server is online\n",logfile);
+	}
 
 	if (pthread_mutex_init(&lock, NULL) != 0) { 
         printf("\n mutex init has failed\n"); 
@@ -430,6 +437,10 @@ void * server_main(void * arg) {
 		free(user_clients);
 		free(obs_clients);
 		free(sockets);
+		if(writetologfile == 1) {
+			fputs("Server is shutting down\n",logfile);
+			fclose(logfile);
+			}
 		return NULL;
 	}
 
@@ -458,7 +469,7 @@ void * server_main(void * arg) {
 				printf("\nThread can't be created :[%s]", 
 					strerror(error));
 
-			//printf("%d user client(s) connected!\n",user_client_count);
+			if(writetologfile==1) {fputs("New user client connected\n",logfile);}
 			user_client_count++;
 		}
 
@@ -476,6 +487,7 @@ void * server_main(void * arg) {
 			pthread_mutex_lock(&lock);
 			critical_event_len = obs_client_count;
 			pthread_mutex_unlock(&lock);
+			if(writetologfile==1) {fputs("New observer client connected\n",logfile);}
 			obs_client_count++;
 
 		}
@@ -507,11 +519,11 @@ int main(int argc, char const *argv[]) {
 			}
 			sargs.port = atoi(argv[5]);
 			if(argc ==8) {
-				if(strcmp(argv[4],"-l") != 0) {
+				if(strcmp(argv[6],"-l") != 0) {
 					printf("Logfile flag (-l) not supplied\n");
 					return 1;
 				}
-			sargs.port = atoi(argv[7]);
+			snprintf(sargs.logfile,FIELDLEN,"%s",argv[7]);
 			}
 		}
 		else {sargs.port = 8080;}
@@ -521,9 +533,7 @@ int main(int argc, char const *argv[]) {
 		struct client_args cargs;
 		void * cargs_ptr;
 		cargs_ptr = &cargs;
-		printf("%s\n",argv[2]);
 		snprintf(cargs.address,FIELDLEN,"%s",argv[2]);
-		printf("%s\n",cargs.address);
 		cargs.port = atoi(argv[3]);
 		user_main(cargs_ptr);
 	}
